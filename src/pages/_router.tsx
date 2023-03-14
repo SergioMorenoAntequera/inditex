@@ -8,7 +8,7 @@ const appRouter = createBrowserRouter([
       element: <Root/>,
     },
     {
-      path: "podcasts",
+      path: "podcast",
       children: [{
         path: ":podcastId",
         element: <PodcastPage/>,

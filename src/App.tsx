@@ -15,7 +15,7 @@ function App() {
         <p className='text-lg font-bold text-blue-500'> Podcasters </p>    
       </div>
 
-      <div className='m-auto container p-4 bg-slate-300'>
+      <div className='p-4 '>
         <RouterProvider router={appRouter}/>
       </div>
     
