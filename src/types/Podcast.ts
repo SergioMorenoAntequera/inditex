@@ -5,6 +5,7 @@ export type Podcast = {
     author: string
     description: string
     images: PodcastImage[]
+    moreInfoUrl: string
 }
 
 export type PodcastImage = {

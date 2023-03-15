@@ -44,7 +44,7 @@ const Root = () => {
     </div>
     
     <div className="grid grid-cols-4 gap-6">
-      {podcasts?.map((podcast: Podcast) => (<PodcastCard podcast={podcast}/>))}
+      {podcasts?.map((podcast: Podcast) => <PodcastCard key={podcast.id} podcast={podcast}/>)}
     </div>
 
   </>)
@@ -59,7 +59,7 @@ const PodcastCard: React.FC<Props> = ({podcast}) => {
     navigate(`/podcast/${podcast.id}`);
   }
 
-  return <div key={podcast.id} className='relative h-full cursor-pointer' onClick={seeDetails}>
+  return <div className='relative h-full cursor-pointer' onClick={seeDetails}>
 
     <img className="absolute z-10 left-1/2 -translate-x-1/2 rounded-full" src={podcast.images[0].url} alt={podcast.title}/>
     <div className="mt-10 p-4 shadow text-center flex flex-col justify-between rounded">

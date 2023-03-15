@@ -1,23 +1,31 @@
 import { Podcast, PodcastImage } from "../types/Podcast";
-import AXIOS_CLIENT from "./client.api";
+import { getLocalStorage, setLocalStorage } from "../utils/localStorageUtils";
+import AXIOS_CLIENT, { NO_CORS_AXIOS_CLIENT } from "./client.api";
+import convert from 'xml-js'
+
+const podcastCache = "podcasts.cache"
 
 // PROXIS ////////////////////////////////////////////////////////////////////
 // Instead of "any" we could create and use a type to match what comes from the api
+
+const apiAlloriginsWinProxy = (res:any) => (JSON.parse(res.data.contents))
 
 const topPodcastProxy = (data: any): Podcast => ({
     id: data.id.attributes['im:id'],
     title: data['im:name'].label,
     author: data['im:artist'].label,
     images: data['im:image'].map(topPodcastImageProxy),
-    description: data.summary
+    description: data.summary.label,
+    moreInfoUrl: ''
 })
 
 const searchPodcastProxy = (data: any): Podcast => ({
-    id: data.trackId,
+    id: data.collectionId,
     title: data.trackName,
     author: data.artistName,
-    images: [{url: data.artworkUrl100 }],
+    images: [{url: data.artworkUrl600 }],
     description: data.description,
+    moreInfoUrl: data.feedUrl
 })
 
 const topPodcastImageProxy = (data: any): PodcastImage => ({
@@ -30,11 +38,56 @@ const topPodcastImageProxy = (data: any): PodcastImage => ({
 // CALLS  //////////////////////////////////////////////////////////////////// 
 
 export function getPodcasts() {
-    return AXIOS_CLIENT.get('/us/rss/toppodcasts/limit=100/genre=1310/json')
-        .then(res => res.data.feed.entry.map(topPodcastProxy))
+    
+    // Check in the cache
+    return getLocalStorage<Podcast[]>(podcastCache)
+        .then(data =>  data)
+        .catch(_ => (
+            AXIOS_CLIENT
+            .get('/us/rss/toppodcasts/limit=100/genre=1310/json')
+            .then(res => {
+                const allPodcasts = res.data.feed.entry.map(topPodcastProxy)
+                setLocalStorage(podcastCache, allPodcasts, 1)
+                return allPodcasts
+            })
+        ))
+    
 } 
 
-export function getPodcastById(podcastId: string) {
-    return AXIOS_CLIENT.get(`/search?term=${podcastId}&media=podcast`)
-        .then(res => searchPodcastProxy(res.data.results[0]))
+export async function getPodcastById(podcastId: string) {
+
+    // I do it this way because I want to get something from the query where you get
+    // all podcasts like the description(not available when getting by id)
+    
+    const mixData = Promise.all([
+        getLocalStorage<Podcast[]>(podcastCache)
+            .then(data => {
+                const foundPodcast = data?.find(p => p.id === podcastId)
+                if(!foundPodcast) throw new Error()
+                return foundPodcast
+            })
+            .catch(err => null),
+
+        NO_CORS_AXIOS_CLIENT
+            .get(`/lookup?id=${podcastId}`)
+            .then(res => searchPodcastProxy(apiAlloriginsWinProxy(res).results[0])),
+    ])
+
+    
+    
+
+    return mixData.then(([cachedPodcast, foundPodcast]) => {
+
+          
+        fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(foundPodcast.moreInfoUrl)}`)
+            .then(res => res.text())
+            .then(data => convert.xml2json(data))
+            
+
+        // return {
+        //     ...foundPodcast, 
+        //     description: cachedPodcast?.description ?? '', 
+        // }
+    })
+    
 } 
